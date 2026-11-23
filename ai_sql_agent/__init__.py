@@ -1,0 +1,1 @@
+"""QueryLens database analytics application."""
