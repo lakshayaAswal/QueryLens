@@ -1,6 +1,6 @@
 # QueryLens
 
-QueryLens is a Streamlit workspace for exploring SQLite, PostgreSQL, and MySQL databases in plain English. Pick an AI provider, ask a question about your data, and inspect the generated SQL, query results, interactive chart, and summary. QueryLens discovers the database schema and validates each read-only query before running it.
+QueryLens is a workspace for exploring SQLite, PostgreSQL, and MySQL databases in plain English. Pick an AI provider, ask a question about your data, and inspect the generated SQL, query results, chart, and summary. QueryLens discovers the database schema and validates each read-only query before running it. [Try the live workspace on Vercel](https://querylens-gray.vercel.app/)
 
 - Use Google Gemini, OpenAI GPT, xAI Grok, or a model from OpenRouter with your own API key.
 - Try the included synthetic retail database and built-in questions without an API key.

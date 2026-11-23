@@ -361,6 +361,14 @@ function dataTable(columns, rows) {
   return table;
 }
 
+function observation(tag, text) {
+  const node = element(tag);
+  for (const [index, part] of text.split(/\*\*([^*]+)\*\*/g).entries()) {
+    node.append(index % 2 ? element("strong", part) : part);
+  }
+  return node;
+}
+
 function renderResult() {
   const analysis = state.result;
   byId("results").hidden = !analysis;
@@ -385,10 +393,10 @@ function renderResult() {
   const observations = (analysis.insights || "").split("\n").map((line) => line.replace(/^\s*[-*]\s+/, "").trim()).filter(Boolean);
   if (observations.length > 1) {
     const list = element("ul");
-    for (const line of observations) list.append(element("li", line));
+    for (const line of observations) list.append(observation("li", line));
     insights.append(list);
   } else {
-    insights.append(element("p", observations[0] || "The result table contains the returned data."));
+    insights.append(observation("p", observations[0] || "The result table contains the returned data."));
   }
 
   const notices = [...(analysis.notices ?? [])];
