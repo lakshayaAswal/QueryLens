@@ -90,11 +90,22 @@ To offer a server-configured PostgreSQL or MySQL connection, set `QUERYLENS_DB_D
 - The selected provider receives your question, relevant schema details, recent questions and SQL, and computed result summaries. Sharing a small sample of returned rows is off by default. When you use OpenRouter, its service routes requests to a model provider.
 - Results stay in the active workspace. Query history is stored in SQLite and scoped to the user and database connection. Chroma computes embeddings locally from schema text and successful questions and SQL. Signed-in users can reuse indexed examples across sessions.
 
-## Host the workspace
+## Deploy on Vercel
+
+Import this repository into Vercel using the repository root. Vercel serves the browser dashboard from `public/` and runs `hosted.py` as a Python 3.12 FastAPI function. The hosted app uses the same AI providers, database schema discovery, and read-only SQL checks as the local workspace.
+
+- Try the retail demo immediately, or enter your own model API key to ask custom questions.
+- Open a standalone SQLite database up to 3 MiB. The hosted app sends the file with requests and closes and removes its working copy after use.
+- For PostgreSQL and MySQL, set `QUERYLENS_HOSTED_DB_ENDPOINTS` in Vercel to a comma-separated list of permitted `host:port` pairs, such as `db.example.com:5432`. Use a read-only database account and a server whose TLS certificate matches its hostname. Remote connections are disabled by default.
+- The hosted dashboard keeps keys, connection details, and query history in the open tab. Download CSV results before closing the tab if you want to retain them. The local Streamlit app provides persistent history, larger SQLite uploads, and Excel and HTML exports.
+
+The hosted runtime dependencies are listed in `pyproject.toml`. Use `requirements.txt` for the Streamlit workspace.
+
+## Self-host the Streamlit workspace
 
 Use a host that can run a long-lived Streamlit Python process. The proxy needs to support WebSockets, and the host needs a writable data directory for SQLite history, uploaded databases, and the Chroma index. Set `QUERYLENS_DATA_DIR` to a mounted persistent volume for data that should survive restarts.
 
-Streamlit ties a user session to a server process. Vercel Functions close WebSocket connections at the function's maximum duration, and a reconnect can reach a different instance. This workspace requires a Streamlit-compatible runtime that preserves session affinity. [Streamlit architecture](https://docs.streamlit.io/develop/concepts/architecture/architecture) · [Vercel WebSockets](https://vercel.com/docs/functions/websockets)
+Streamlit ties a user session to a server process. For multiple replicas, configure session affinity so uploads and media requests reach the right server. [Streamlit architecture](https://docs.streamlit.io/develop/concepts/architecture/architecture)
 
 For a shared deployment, configure Streamlit OIDC in `.streamlit/secrets.toml`, set `QUERYLENS_REQUIRE_LOGIN=1`, and serve the workspace over HTTPS. Set `QUERYLENS_DB_HOSTS` and restrict outbound database access to approved hosts. Store API keys and database passwords in your hosting environment's secret manager. [Streamlit authentication documentation](https://docs.streamlit.io/develop/concepts/connections/authentication)
 
@@ -128,4 +139,5 @@ python -m unittest discover -s tests -v
 | `ai_sql_agent/analytics.py`, `ai_sql_agent/exports.py` | Result summaries, charts, and downloads |
 | `ai_sql_agent/history.py`, `ai_sql_agent/demo.py` | Query history and synthetic retail data |
 | `ai_sql_agent/api.py` | Optional FastAPI factory |
+| `hosted.py`, `public/`, `vercel.json` | Hosted dashboard, stateless HTTP API, and Vercel routing |
 | `tests/` | Automated tests |

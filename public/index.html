@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0d1624">
+  <meta name="color-scheme" content="dark">
+  <title>QueryLens · AI SQL workspace</title>
+  <link rel="stylesheet" href="/workspace.css">
+  <script type="module" src="/workspace.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to workspace</a>
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-icon" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span>QueryLens</span>
+    </div>
+
+    <nav class="navigation" aria-label="Workspace views">
+      <button type="button" data-view="workspace" aria-current="page"><span aria-hidden="true">▦</span> Workspace</button>
+      <button type="button" data-view="schema"><span aria-hidden="true">▤</span> Schema explorer</button>
+      <button type="button" data-view="history"><span aria-hidden="true">◷</span> Query history</button>
+      <button type="button" data-view="settings"><span aria-hidden="true">⚙</span> Settings</button>
+    </nav>
+
+    <section class="data-source" aria-labelledby="database-heading">
+      <h2 class="eyebrow" id="database-heading">Database</h2>
+      <div class="connection">
+        <span class="connection-icon" aria-hidden="true">▤</span>
+        <div>
+          <strong id="connection-name">Sample Commerce</strong>
+          <small id="connection-meta">Connecting…</small>
+        </div>
+        <i class="status-dot" id="connection-dot" hidden></i>
+      </div>
+      <button class="secondary connect-button" type="button" id="open-connection" disabled><span aria-hidden="true">＋</span> Connect database</button>
+    </section>
+
+    <section class="sidebar-schema" id="sidebar-schema" aria-labelledby="sidebar-schema-heading" hidden>
+      <h2 class="eyebrow" id="sidebar-schema-heading">Schema</h2>
+      <ul id="sidebar-tables"></ul>
+    </section>
+    <div class="sidebar-foot"><span class="status-dot" aria-hidden="true"></span> Read-only SQL</div>
+  </aside>
+
+  <main id="main" tabindex="-1">
+    <div class="topbar">
+      <div class="breadcrumb"><span>QueryLens</span><span aria-hidden="true">/</span><strong id="breadcrumb-view">Workspace</strong></div>
+      <button class="secondary" id="new-query" type="button"><span aria-hidden="true">＋</span> New query</button>
+    </div>
+
+    <div class="alert" role="alert" id="startup-error" hidden></div>
+    <button class="secondary" type="button" id="retry-startup" hidden>Retry connection</button>
+
+    <section class="view" id="workspace-view" data-panel="workspace">
+      <header class="page-header">
+        <div>
+          <h1 tabindex="-1">Ask your data</h1>
+          <p>Turn everyday questions into SQL, charts, and insights.</p>
+        </div>
+        <span class="mode"><i class="status-dot" aria-hidden="true"></i><span id="mode-label">Sample mode</span></span>
+      </header>
+
+      <form class="panel composer" id="question-form">
+        <label for="question"><span class="accent" aria-hidden="true">✦</span> Ask a question</label>
+        <div class="form-row">
+          <input id="question" maxlength="2000" placeholder="e.g. How has monthly revenue changed in 2026?" required>
+          <button class="primary" type="submit" id="run-query" disabled>Run analysis <span aria-hidden="true">→</span></button>
+        </div>
+        <div id="sample-prompts" hidden>
+          <p class="eyebrow">Try an example</p>
+          <div class="prompt-list" id="prompt-list"></div>
+        </div>
+      </form>
+      <p id="query-status" class="query-status" role="status" aria-live="polite"></p>
+      <p id="query-error" class="alert" role="alert" hidden></p>
+      <div id="result-empty" class="panel empty-state" hidden>
+        <span class="empty-icon" aria-hidden="true">▦</span>
+        <p>Your results will appear here after you run an analysis.</p>
+      </div>
+
+      <section id="results" aria-labelledby="result-heading" hidden>
+        <div class="section-header">
+          <h2 id="result-heading">Analysis results</h2>
+          <button class="secondary" type="button" id="download-csv"><span aria-hidden="true">↓</span> Export CSV</button>
+        </div>
+        <dl class="metric-grid">
+          <div class="panel metric"><dt>Rows returned</dt><dd id="row-count">–</dd></div>
+          <div class="panel metric"><dt>Columns</dt><dd id="column-count">–</dd></div>
+          <div class="panel metric"><dt>Query time</dt><dd id="query-time">–</dd></div>
+        </dl>
+
+        <div class="result-tabs" role="tablist" aria-label="Analysis results">
+          <button type="button" role="tab" id="overview-tab" aria-selected="true" aria-controls="overview-result">Overview</button>
+          <button type="button" role="tab" id="table-tab" aria-selected="false" aria-controls="table-result" tabindex="-1">Data table</button>
+          <button type="button" role="tab" id="sql-tab" aria-selected="false" aria-controls="sql-result" tabindex="-1">Generated SQL</button>
+        </div>
+        <div class="result-layout" id="overview-result" role="tabpanel" aria-labelledby="overview-tab" tabindex="0">
+          <figure class="panel chart-panel">
+            <figcaption id="chart-title">Query visualization</figcaption>
+            <div id="chart-area" class="chart-area">
+              <canvas id="chart" role="img" aria-labelledby="chart-title" hidden></canvas>
+              <p id="chart-empty" class="muted">No chart is available for this result. Open Data table to inspect the rows.</p>
+            </div>
+            <p class="muted" id="chart-caption" hidden></p>
+          </figure>
+          <section class="panel insights-panel" aria-labelledby="insights-heading">
+            <h3 id="insights-heading"><span aria-hidden="true" class="accent">✦</span> Analyst insights</h3>
+            <div id="insights"></div>
+          </section>
+        </div>
+        <div class="panel table-wrap" id="table-result" role="tabpanel" aria-labelledby="table-tab" tabindex="0" hidden></div>
+        <div class="panel sql-panel" id="sql-result" role="tabpanel" aria-labelledby="sql-tab" tabindex="0" hidden>
+          <p id="sql-question" class="muted"></p>
+          <pre><code id="sql-code"></code></pre>
+          <p id="sql-meta" class="muted"></p>
+        </div>
+        <ul class="notices" id="result-notices" hidden></ul>
+      </section>
+    </section>
+
+    <section class="view" id="schema-view" data-panel="schema" hidden>
+      <header class="page-header"><div><h1 tabindex="-1">Schema explorer</h1><p id="schema-caption">Explore the tables and relationships in your database.</p></div></header>
+      <label class="search-label" for="schema-search">Find a table or column</label>
+      <input class="search" type="search" id="schema-search" placeholder="Search tables or columns">
+      <div id="schema-results"></div>
+    </section>
+
+    <section class="view" id="history-view" data-panel="history" hidden>
+      <header class="page-header"><div><h1 tabindex="-1">Query history</h1><p>Review analyses from this browser session.</p></div></header>
+      <p class="panel empty-state" id="history-empty">Successful queries on the active database will appear here.</p>
+      <ul id="history-list" class="history-list" hidden></ul>
+    </section>
+
+    <section class="view" id="settings-view" data-panel="settings" hidden>
+      <header class="page-header"><div><h1 tabindex="-1">Settings</h1><p>Choose a model and control what you share with its provider.</p></div></header>
+      <form id="settings-form" class="panel settings">
+        <label for="provider">AI provider</label>
+        <select id="provider" required disabled></select>
+        <label for="model">Model ID</label>
+        <input id="model" placeholder="Use provider default" maxlength="150" autocomplete="off">
+        <label for="api-key">API key</label>
+        <input id="api-key" type="password" autocomplete="new-password" maxlength="1000" aria-describedby="key-status">
+        <p class="muted settings-comment" id="key-status">Keys are kept in this page during your session.</p>
+        <label class="checkbox"><input id="use-ai-sample" type="checkbox"> Use this AI provider with the sample database</label>
+        <label class="checkbox"><input id="share-samples" type="checkbox"> Share a small sample of returned rows</label>
+        <p class="muted">The selected provider receives your question, relevant schema, recent questions and SQL, and aggregate statistics.</p>
+        <div class="actions">
+          <button type="submit" class="primary" id="save-settings" disabled>Save settings</button>
+          <button type="button" class="secondary" id="clear-api-key" disabled>Clear API key</button>
+        </div>
+        <p class="inline-status" id="settings-status" role="status"></p>
+      </form>
+    </section>
+  </main>
+
+  <dialog id="connection-dialog" aria-labelledby="connection-dialog-title">
+    <form id="connection-form" autocomplete="off">
+      <div class="section-header">
+        <h2 id="connection-dialog-title">Connect database</h2>
+        <button type="button" class="secondary icon-button" id="close-connection" aria-label="Close connection dialog">×</button>
+      </div>
+      <label for="database-kind">Database source</label>
+      <select id="database-kind">
+        <option value="sample">Sample Commerce</option>
+        <option value="sqlite">SQLite database file</option>
+      </select>
+      <div id="sqlite-fields" hidden>
+        <label for="sqlite-file">SQLite snapshot</label>
+        <input id="sqlite-file" type="file" accept=".db,.sqlite,.sqlite3" aria-describedby="sqlite-help">
+        <p class="muted" id="sqlite-help"></p>
+      </div>
+      <div id="remote-fields" hidden>
+        <div class="connection-fields">
+          <div><label for="db-host">Hostname</label><input id="db-host" maxlength="253"></div>
+          <div><label for="db-port">Port</label><input id="db-port" type="number" min="1" max="65535"></div>
+          <div><label for="db-name">Database name</label><input id="db-name" maxlength="128"></div>
+          <div id="db-schema-field"><label for="db-schema">Schema</label><input id="db-schema" placeholder="public" maxlength="128"></div>
+          <div><label for="db-username">Username</label><input id="db-username" maxlength="128" autocomplete="off"></div>
+          <div><label for="db-password">Password</label><input id="db-password" type="password" maxlength="1000" autocomplete="new-password"></div>
+        </div>
+        <p class="muted">Use a dedicated read-only database account. This deployment verifies TLS.</p>
+      </div>
+      <p class="alert" id="connection-error" role="alert" hidden></p>
+      <div class="actions"><button class="primary" type="submit" id="connect-database">Connect</button></div>
+    </form>
+  </dialog>
+</body>
+</html>

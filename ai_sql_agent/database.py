@@ -61,7 +61,12 @@ class Database:
     """Manage one selected database and scope queries to its discovered schema."""
 
     def __init__(
-        self, config: ConnectionConfig, *, timeout_seconds: int = 10, max_rows: int = 1000
+        self,
+        config: ConnectionConfig,
+        *,
+        timeout_seconds: int = 10,
+        max_rows: int = 1000,
+        sqlite_max_value_bytes: int | None = None,
     ) -> None:
         self.dialect = config.dialect.strip().lower()
         if self.dialect not in DIALECTS:
@@ -70,13 +75,17 @@ class Database:
             raise DatabaseError("The query timeout must be between 1 and 300 seconds.")
         if type(max_rows) is not int or not 1 <= max_rows <= 100_000:
             raise DatabaseError("The query row limit must be between 1 and 100,000.")
+        if sqlite_max_value_bytes is not None and (
+            type(sqlite_max_value_bytes) is not int or sqlite_max_value_bytes < 1
+        ):
+            raise DatabaseError("The SQLite value size limit must be a positive number of bytes.")
 
         self.timeout_seconds = timeout_seconds
         self.max_rows = max_rows
         self._tables: frozenset[str] | None = None
         try:
             if self.dialect == "sqlite":
-                self.schema, self._engine, identity = self._sqlite_engine(config)
+                self.schema, self._engine, identity = self._sqlite_engine(config, sqlite_max_value_bytes)
             else:
                 self.schema, self._engine, identity = self._server_engine(config)
         except (SQLAlchemyError, OSError, ImportError, ValueError):
@@ -85,7 +94,7 @@ class Database:
             json.dumps((self.dialect, *identity, self.schema), ensure_ascii=False).encode()
         ).hexdigest()
 
-    def _sqlite_engine(self, config: ConnectionConfig) -> tuple[str, Engine, tuple]:
+    def _sqlite_engine(self, config: ConnectionConfig, max_value_bytes: int | None) -> tuple[str, Engine, tuple]:
         if config.schema and config.schema.lower() != "main":
             raise DatabaseError("SQLite uses the main schema of the selected file.")
         if not config.database or config.database == ":memory:":
@@ -99,6 +108,8 @@ class Database:
                 f"{path.as_uri()}?mode=ro", uri=True, timeout=self.timeout_seconds
             )
             try:
+                if max_value_bytes is not None:
+                    connection.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, max_value_bytes)
                 connection.execute("PRAGMA query_only = ON")
                 connection.execute("PRAGMA trusted_schema = OFF")
             except sqlite3.Error:
